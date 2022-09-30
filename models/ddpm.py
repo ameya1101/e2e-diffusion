@@ -39,7 +39,7 @@ class Diffusion:
     def sample(self, model, n):
         model.eval()
         with torch.no_grad():
-            x = torch.randn(n, self.n_channels, self.img_size, self.img_size)
+            x = torch.randn(n, self.img_size, self.img_size)
             for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
                 t = (torch.ones(n) * i).long().to(self.device)
                 predicted_noise = model(x, t)
