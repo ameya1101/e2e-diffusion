@@ -1,4 +1,3 @@
-import os
 import torch
 from tqdm import tqdm
 
@@ -10,6 +9,7 @@ class Diffusion:
         beta_start=1e-4,
         beta_end=0.02,
         img_size=64,
+        n_channels = 1,
         device="cuda",
     ):
         self.noise_steps = noise_steps
@@ -17,6 +17,7 @@ class Diffusion:
         self.beta_end = beta_end
         self.img_size = img_size
         self.device = device
+        self.n_channels = n_channels
 
         self.beta = self.prepare_noise_schedule().to(device)
         self.alpha = 1.0 - self.beta
@@ -39,7 +40,7 @@ class Diffusion:
     def sample(self, model, n):
         model.eval()
         with torch.no_grad():
-            x = torch.randn(n, self.img_size, self.img_size)
+            x = torch.randn(n, self.n_channels, self.img_size, self.img_size).to(self.device)
             for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
                 t = (torch.ones(n) * i).long().to(self.device)
                 predicted_noise = model(x, t)
@@ -62,5 +63,4 @@ class Diffusion:
                     * noise
                 )
         model.train()
-        x = (x.clamp(-1, 1) + 1) / 2  # Not too sure check later
         return x
