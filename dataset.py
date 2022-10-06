@@ -5,10 +5,11 @@ from pyarrow.parquet import ParquetFile
 
 
 class JetDataset(Dataset):
-    def __init__(self, PATH, transforms=None, columns=["X_jets"]) -> None:
+    def __init__(self, PATH, transforms=None, columns=["X_jets"], channels=[0, 1, 2]) -> None:
         super(JetDataset, self).__init__()
 
         self.parquets = []
+        self.channels = channels
         self.transforms = transforms
         self.columns = columns
         cumrows = 0
@@ -39,5 +40,5 @@ class JetDataset(Dataset):
 
         if self.transforms:
             data = self.transforms(data)
-
+        data = data.unsqueeze(data[self.channels], dim=0)
         return data
