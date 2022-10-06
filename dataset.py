@@ -40,5 +40,5 @@ class JetDataset(Dataset):
 
         if self.transforms:
             data = self.transforms(data)
-        data = data.unsqueeze(data[self.channels], dim=0)
+        data = data[self.channels]
         return data

@@ -1,13 +1,10 @@
 import torchvision
-from PIL import Image
 import os
 
 
-def save_images(images, PATH, **kwargs):
+def save_images(images, PATH, epoch, **kwargs):
     grid = torchvision.utils.make_grid(images, **kwargs)
-    ndarr = grid.permute(1, 2, 0).to("cpu").numpy()
-    im = Image.fromarray(ndarr)
-    im.save(PATH)
+    torchvision.utils.save_image(grid, os.path.join(PATH, f"{epoch}.png"))
 
 
 class EMA:

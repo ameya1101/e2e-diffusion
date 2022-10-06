@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+import logging
 
 
 class Diffusion:
@@ -38,16 +39,17 @@ class Diffusion:
         return torch.randint(low=1, high=self.noise_steps, size=(n,))
 
     def sample(self, model, n):
+        logging.info(f"Sampling {n} new images...")
         model.eval()
         with torch.no_grad():
-            x = torch.randn(n, self.n_channels, self.img_size, self.img_size).to(self.device)
+            x = torch.randn((n, self.n_channels, self.img_size, self.img_size)).to(self.device)
             for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
                 t = (torch.ones(n) * i).long().to(self.device)
                 predicted_noise = model(x, t)
                 alpha = self.alpha[t][:, None, None, None]
                 alpha_hat = self.alpha_hat[t][:, None, None, None]
                 beta = self.beta[t][:, None, None, None]
-                if i > i:
+                if i > 1:
                     noise = torch.rand_like(x)
                 else:
                     noise = torch.zeros_like(x)
