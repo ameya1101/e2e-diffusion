@@ -41,7 +41,7 @@ class Diffusion:
     def sample(self, model, n):
         logging.info(f"Sampling {n} new images...")
         model.eval()
-        with torch.no_grad():
+        with torch.inference_mode():
             x = torch.randn((n, self.n_channels, self.img_size, self.img_size)).to(self.device)
             for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
                 t = (torch.ones(n) * i).long().to(self.device)
@@ -50,10 +50,9 @@ class Diffusion:
                 alpha_hat = self.alpha_hat[t][:, None, None, None]
                 beta = self.beta[t][:, None, None, None]
                 if i > 1:
-                    noise = torch.rand_like(x)
+                    noise = torch.randn_like(x)
                 else:
                     noise = torch.zeros_like(x)
-
                 x = (
                     1
                     / torch.sqrt(alpha)
@@ -61,8 +60,7 @@ class Diffusion:
                         x
                         - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise
                     )
-                    * torch.sqrt(beta)
-                    * noise
+                    + torch.sqrt(beta) * noise
                 )
         model.train()
         return x

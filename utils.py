@@ -6,6 +6,13 @@ def save_images(images, PATH, epoch, **kwargs):
     grid = torchvision.utils.make_grid(images, **kwargs)
     torchvision.utils.save_image(grid, os.path.join(PATH, f"{epoch}.png"))
 
+def min_max_scaler(data, data_range, new_range=(0, 1)):
+    data_min, data_max = data_range
+    new_min, new_max = new_range
+    data_std = (data - data_min) / (data_max - data_min)
+    scaled_data = data_std * (new_max - new_min) + new_min
+    return scaled_data
+
 
 class EMA:
     def __init__(self, beta: float) -> None:

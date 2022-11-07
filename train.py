@@ -18,6 +18,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=log
 def train(args, dataloader, diffusion, model, optimizer, logger):
     device = args.device
     mse = nn.MSELoss()
+    l = len(dataloader)
     for epoch in range(args.epochs):
         logging.info(f"Starting epoch {epoch}:")
         pbar = tqdm(dataloader)
