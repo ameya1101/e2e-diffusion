@@ -5,7 +5,9 @@ from pyarrow.parquet import ParquetFile
 
 
 class JetDataset(Dataset):
-    def __init__(self, PATH, transforms=None, columns=["X_jets"], channels=[0, 1, 2]) -> None:
+    def __init__(
+        self, PATH, transforms=None, columns=["X_jets"], channels=[0, 1, 2]
+    ) -> None:
         super(JetDataset, self).__init__()
 
         self.parquets = []
@@ -34,11 +36,11 @@ class JetDataset(Dataset):
         index = index - (cumrows - rows)
         row = parquet.read_row_group(index, columns=self.columns).to_pydict()
         data = np.float32(row["X_jets"][0])
+        data = data[self.channels]
 
-        data[data < 1e-3] = 0.0
+        data[data < 1e-5] = 0.0
         data = torch.from_numpy(data)
 
         if self.transforms:
             data = self.transforms(data)
-        data = data[self.channels]
         return data

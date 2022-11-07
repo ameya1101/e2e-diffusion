@@ -1,50 +1,56 @@
-import torchvision
-import os
+import math
+
+import torch
+from torchvision import transforms as T
 
 
-def save_images(images, PATH, epoch, **kwargs):
-    grid = torchvision.utils.make_grid(images, **kwargs)
-    torchvision.utils.save_image(grid, os.path.join(PATH, f"{epoch}.png"))
-
-def min_max_scaler(data, data_range, new_range=(0, 1)):
-    data_min, data_max = data_range
-    new_min, new_max = new_range
-    data_std = (data - data_min) / (data_max - data_min)
-    scaled_data = data_std * (new_max - new_min) + new_min
-    return scaled_data
+def exists(x):
+    return x is not None
 
 
-class EMA:
-    def __init__(self, beta: float) -> None:
-        self.beta = beta
-        self.step = 0
+def default(val, d):
+    if exists(val):
+        return val
+    return d() if callable(d) else d
 
-    def update_model_average(self, ema_model, current_model):
-        for current_params, ma_params in zip(
-            current_model.parameters(), ema_model.parameters()
-        ):
-            old_weight, up_weight = ma_params.data, current_params.data
-            ma_params.data = self.update_average(old_weight, up_weight)
 
-    def update_average(self, old, new):
-        if old is None:
-            return new
-        else:
-            return old * self.beta + (1 - self.beta) * new
+def identity(t, *args, **kwargs):
+    return t
 
-    def step_ema(self, ema_model, model, step_start_ema=2000):
-        if self.step < step_start_ema:
-            self.reset_parameters(ema_model, model)
-            self.step += 1
-            return
-        self.update_model_average(ema_model, model)
-        self.step += 1
 
-    def reset_parameters(self, ema_model, model):
-        ema_model.load_state_dict(model.state_dict())
+def cycle(loader):
+    while True:
+        for data in loader:
+            yield data
 
-def setup_logging(run_name):
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("results", exist_ok=True)
-    os.makedirs(os.path.join("models", run_name), exist_ok=True)
-    os.makedirs(os.path.join("results", run_name), exist_ok=True)
+
+def has_int_sqrt(n):
+    return (math.sqrt(n) ** 2) == n
+
+
+def num_to_groups(num, divisor):
+    groups = num // divisor
+    remainder = num % divisor
+    arr = [divisor] * groups
+    if remainder > 0:
+        arr.append(remainder)
+    return arr
+
+
+def max_crop(img, size=64):
+    n_channels = img.shape[0]
+    cropped_img = torch.zeros(n_channels, size, size)
+    for channel in range(n_channels):
+        x_max = (img[channel] == torch.max(img[channel])).nonzero()[0][1]
+        y_max = (img[channel] == torch.max(img[channel])).nonzero()[0][1]
+        cropped_img[channel] = T.functional.crop(
+            img[channel], x_max - size // 2, y_max - size // 2, size, size
+        )
+    return cropped_img
+
+
+def max_normalize(img):
+    n_channels = img.shape[0]
+    for channel in range(n_channels):
+        img[channel] = img[channel] / torch.max(img[channel])
+    return img
