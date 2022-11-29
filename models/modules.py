@@ -5,7 +5,14 @@ import math
 from einops import rearrange, reduce
 from functools import partial
 
-from utils import default, exists
+def exists(x):
+    return x is not None
+
+
+def default(val, d):
+    if exists(val):
+        return val
+    return d() if callable(d) else d
 
 
 class Residual(nn.Module):
@@ -316,4 +323,9 @@ class UNet(nn.Module):
 
 
 if __name__ == "__main__":
-    pass
+    x = torch.randn(1, 1, 64, 64)
+    t = torch.tensor([3], dtype=torch.long)
+    model = UNet(dim = 10, channels = 1, resnet_block_groups=1)
+    y = model(x, t)
+    print(y)
+    print(y.shape)

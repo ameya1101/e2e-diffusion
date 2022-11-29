@@ -10,7 +10,18 @@ import torch.nn as nn
 
 from tqdm.auto import tqdm
 
-from utils import default, identity
+#from utils import default, identity
+
+def exists(x):
+    return x is not None 
+def default(val, d):
+    if exists(val):
+        return val
+    return d() if callable(d) else d
+
+
+def identity(t, *args, **kwargs):
+    return t
 
 ModelPrediction = namedtuple("ModelPrediction", ["pred_noise", "pred_x_start"])
 
@@ -77,7 +88,7 @@ class GaussianDiffusion(nn.Module):
         alphas_cumprod = torch.cumprod(alphas, dim=0)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
 
-        timesteps = betas.shape
+        timesteps, = betas.shape
         self.num_timesteps = int(timesteps)
         self.loss_type = loss_type
 
@@ -373,3 +384,19 @@ class GaussianDiffusion(nn.Module):
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
 
         return self.p_losses(img, t, *args, **kwargs)
+
+if __name__ == "__main__":
+    from modules import UNet
+
+    x = torch.randn(1, 1, 64, 64)
+    model = UNet(dim = 10, channels = 1, resnet_block_groups=1)
+    diffusion = GaussianDiffusion(
+        model,
+        image_size = 64,
+        timesteps = 1000,   # number of steps
+        loss_type = 'l1',    # L1 or L2,
+        objective='pred_noise'
+    )
+    y = diffusion(x)
+    print(f"# parameters: {sum(1 for _ in diffusion.parameters())}")
+    print(y)
