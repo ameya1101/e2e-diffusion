@@ -1,46 +1,32 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-from pyarrow.parquet import ParquetFile
 
 
 class JetDataset(Dataset):
-    def __init__(
-        self, PATH, transforms=None, columns=["X_jets"], channels=[0, 1, 2]
-    ) -> None:
+    def __init__(self, transform=None, files: list = [], channel: str = "ecal") -> None:
         super(JetDataset, self).__init__()
+        self.files = files
+        self.channel = channel
+        self.transform = transform
+        self.len = len(self.files)
 
-        self.parquets = []
-        self.channels = channels
-        self.transforms = transforms
-        self.columns = columns
-        cumrows = 0
-        for file in PATH:
-            parquet = ParquetFile(file)
-            rows = parquet.num_row_groups
-            cumrows += rows
-            self.parquets.append((parquet, rows, cumrows))
+    @property
+    def raw_file_names(self):
+        return self.files
 
-    def __len__(self):
-        return sum(file[1] for file in self.parquets)
+    def __len__(self) -> int:
+        return self.len
 
-    def __getitem__(self, index):
-        for parquet, rows, cumrows in self.parquets:
-            if index > cumrows:
-                raise IndexError("Item index out of range")
-            if index < cumrows:
-                break
-            else:
-                continue
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        if idx > self.len:
+            raise IndexError(
+                f"index {idx} exceeds total number of instances in the dataset"
+            )
 
-        index = index - (cumrows - rows)
-        row = parquet.read_row_group(index, columns=self.columns).to_pydict()
-        data = np.float32(row["X_jets"][0])
-        data = data[self.channels]
+        with np.load(self.files[idx]) as f:
+            event = torch.from_numpy(f[self.channel])
+            if self.transform:
+                event = self.transform(event)
 
-        data[data < 1e-5] = 0.0
-        data = torch.from_numpy(data)
-
-        if self.transforms:
-            data = self.transforms(data)
-        return data
+            return event
