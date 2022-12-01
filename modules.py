@@ -43,7 +43,7 @@ class PointNet(nn.Module):
     def __init__(self, dim=3, residual=False) -> None:
         super().__init__()
         self.residual = residual
-
+        self.dim = dim
         time_dim = dim * 4
         self.layers = nn.ModuleList(
             [
@@ -56,7 +56,7 @@ class PointNet(nn.Module):
             ]
         )
 
-    def forward(self, x, time):
+    def forward(self, x, t):
         x_ = x
 
         for layer in self.layers:

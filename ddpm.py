@@ -42,6 +42,7 @@ class PointDiffusion(nn.Module):
 
         self.model = model
         self.loss_type = loss_type
+        self.dim = model.dim
 
         if beta_schedule == "linear":
             betas = linear_beta_schedule(timesteps)
@@ -153,12 +154,12 @@ class PointDiffusion(nn.Module):
         )
 
     @torch.no_grad()
-    def sample(self, shape):
-        batch, device = shape[0], self.betas.device
-        x = torch.randn(shape, device=device)
+    def sample(self, num_points):
+        device = self.betas.device
+        x = torch.randn((1, num_points, self.dim), device=device)
         x_0 = None
         for t in tqdm(
-            reversed(0, self.num_timesteps),
+            reversed(range(0, self.num_timesteps)),
             desc="sampling loop time step",
             total=self.num_timesteps,
         ):
@@ -182,3 +183,15 @@ class PointDiffusion(nn.Module):
         batch_size, num_points, dim, device = (*x.shape, x.device)
         t = torch.randint(0, self.num_timesteps, (batch_size,), device=device).long()
         return self.p_losses(x, t, *args, **kwargs)
+
+
+if __name__ == '__main__':
+    from modules import PointNet
+
+    model = PointNet(residual=True)
+    diffusion = PointDiffusion(model = model)
+    x = torch.randn(1, 4, 3)
+    print(diffusion(x))
+
+    x = diffusion.sample(5)
+    print(x)
