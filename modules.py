@@ -15,7 +15,7 @@ class PointNet(nn.Module):
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(256)
-        self.bn4 = nn.BatchNorm2d(512)
+        self.bn4 = nn.BatchNorm1d(512)
 
         # layers to generate the mean
         self.fc1_m = nn.Linear(512, 256)

@@ -33,7 +33,7 @@ class PointWiseNet(nn.Module):
             ConcatSquishLinear(128, 256, context_dim + 3),
             ConcatSquishLinear(256, 512, context_dim + 3),
             ConcatSquishLinear(512, 256, context_dim + 3),
-            ConcatSquishLinear(126, 128, context_dim + 3),
+            ConcatSquishLinear(256, 128, context_dim + 3),
             ConcatSquishLinear(128, 3, context_dim + 3),
         ])
 
@@ -46,7 +46,7 @@ class PointWiseNet(nn.Module):
         """
         batch_size = x.size(0)
         beta = beta.view(batch_size, 1, 1)         # (B, 1, 1)
-        context = context.view(batch_size, 1, 1)   # (B, 1, F)
+        context = context.view(batch_size, 1, -1)   # (B, 1, F)
 
         time_emb = torch.cat([beta, torch.sin(beta), torch.cos(beta)], dim=-1) # (B, 1, 3)
         ctx_emb = torch.cat([time_emb, context], dim=-1)  # (B, 1, F+3)
@@ -73,7 +73,6 @@ class PointDiffusion(nn.Module):
         super().__init__()
 
         self.model = model
-        self.dim = model.dim
 
         if beta_schedule == "linear":
             betas = linear_beta_schedule(timesteps)
@@ -139,14 +138,14 @@ class PointDiffusion(nn.Module):
         """
         batch_size, _, point_dim, device = x0.size(), x0.device
         if t == None:
-            t = torch.randint(1, self.num_timesteps + 1, (batch_size,), device=device).long()
+            t = torch.randint(0, self.num_timesteps, (batch_size,), device=device).long()
 
         beta = self.betas[t]
         c0 = self.sqrt_alphas_cumprod[t]             # (B, 1, 1)
         c1 = self.sqrt_one_minus_alphas_cumprod[t]   # (B, 1, 1)
         
-        ε_rand = torch.randn_like(x0).view(-1, 1, 1)                              
-        ε_theta = self.model(c0 * x + c1 * ε_rand,  beta=beta, context=context).view(-1, 1, 1)
+        ε_rand = torch.randn_like(x0)                              
+        ε_theta = self.model(c0 * x0 + c1 * ε_rand,  beta=beta, context=context).view(-1, 1, 1)
 
         loss = F.mse_loss(ε_theta.view(-1, point_dim), ε_rand.view(-1, point_dim), reduction='mean')
         return loss
@@ -161,9 +160,9 @@ class PointDiffusion(nn.Module):
             desc="sampling loop time step",
             total=self.num_timesteps,
         ):
-            z = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
+            z = torch.randn_like(x_T) if t > 0 else torch.zeros_like(x_T)
             sigma = self.posterior_variance[t]
-            c0 = self.sqrt_recip_alphas_cumprod
+            c0 = self.sqrt_recip_alphas_cumprod[t]
             c1 = self.betas[t] * self.sqrt_recip1m_alphas_cumprod[t]
 
             x_t = traj[t]
