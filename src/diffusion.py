@@ -51,7 +51,7 @@ class PointDiffusion(nn.Module):
             projection_dim=self.num_embed,
         )
 
-    def train_step(self, x):
+    def forward(self, x):
         random_t = torch.randint(low=0, high=self.num_steps, size=(x.shape[0], 1))
         alpha = torch.gather(
             torch.sqrt(self.alphas_cumprod), index=random_t.squeeze(), dim=0
@@ -68,10 +68,10 @@ class PointDiffusion(nn.Module):
         perturbed_x = alpha_reshape * x + z * sigma_reshape
         t_embedding = self.time_embedder(random_t)
 
-        score = self.particle_model(x, t_embedding)
+        score = self.particle_model(perturbed_x, t_embedding)
 
         v = alpha_reshape * z - sigma_reshape * x
-        loss = nn.functional.mse_loss(score, v)
+        loss = torch.square(score - v).mean()
 
         return loss
 

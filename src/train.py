@@ -25,23 +25,7 @@ def train_step(
     for batch_idx, x in enumerate(dataloader):
         x = x.to(device)
         optimizer.zero_grad()
-        random_t = torch.randint(low=0, high=model.num_steps, size=(x.shape[0], 1))
-        alpha = torch.gather(torch.sqrt(model.alphas_cumprod), index=random_t, dim=0)
-        sigma = torch.gather(
-            torch.sqrt(1 - model.alphas_cumprod), index=random_t, dim=0
-        )
-        sigma = torch.clamp(sigma, min=1e-3, max=0.999)
-
-        alpha_reshape = torch.reshape(alpha, shape=(-1, 1, 1))
-        sigma_reshape = torch.reshape(sigma, shape=(-1, 1, 1))
-
-        z = torch.randn_like(x)
-        perturbed_x = alpha_reshape * x + z * sigma_reshape
-        t_embedding = model.time_embedder(random_t)
-        score = model.particle_model(perturbed_x, t_embedding)
-
-        v = alpha_reshape * z - sigma_reshape * x
-        loss = torch.square(score - v).mean()
+        loss = model(x)
         loss.backward()
         optimizer.step()
         if batch_idx % 10 == 0:
