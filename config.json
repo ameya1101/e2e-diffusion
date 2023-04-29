@@ -1,0 +1,10 @@
+{
+    "NUM_FEATS": 3,
+    "NUM_DEPOSITS": 300,
+    "BATCH": 128,
+    "N_EPOCHS": 250,
+    "MAX_STEPS": 512,
+    "NUM_EMBED": 64,
+    "LR": 0.001,
+    "EMA_START": 100
+}
