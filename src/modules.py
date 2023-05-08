@@ -2,6 +2,30 @@ import torch
 import torch.nn as nn
 
 
+class TimeDistributed(nn.Module):
+    def __init__(self, module, batch_first=True):
+        super(TimeDistributed, self).__init__()
+        self.module = module
+        self.batch_first = batch_first
+
+    def forward(self, x):
+        if len(x.size()) <= 2:
+            return self.module(x)
+
+        # Squash samples and timesteps into a single axis
+        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
+
+        y = self.module(x_reshape)
+
+        # We have to reshape Y
+        if self.batch_first:
+            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
+        else:
+            y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
+
+        return y
+
+
 class TimeEmbedding(nn.Module):
     def __init__(self, num_embed) -> None:
         super(TimeEmbedding, self).__init__()
@@ -15,7 +39,7 @@ class TimeEmbedding(nn.Module):
         )
 
     def forward(self, x):
-        angles = x * self.projections
+        angles = x * self.projections.to(x.device)
         time_embedding = torch.concat([torch.sin(angles), torch.cos(angles)], dim=-1)
         time_embedding = self.mlp(time_embedding)
         return time_embedding
@@ -72,24 +96,23 @@ class DeepSetsAttention(nn.Module):
         )
 
         self.encoder_mlp = nn.Sequential(
-            nn.Linear(projection_dim + num_feats, projection_dim),
-            nn.LeakyReLU(),
-            nn.Linear(projection_dim, projection_dim),
+            TimeDistributed(nn.Linear(projection_dim + num_feats, projection_dim)),
+            TimeDistributed(nn.LeakyReLU())
         )
+        self.time_linear = TimeDistributed(nn.Linear(projection_dim, projection_dim))
 
-        self.transfomer_layers = nn.ModuleList(
-            [
-                TransformerLayer(projection_dim=projection_dim, num_heads=num_heads)
-                for _ in range(num_transformers)
-            ]
+        self.transfomer_layers = nn.ModuleDict(
+            {
+                f"transformer_{i}": TransformerLayer(projection_dim=projection_dim, num_heads=num_heads) for i in range(num_transformers)
+            }
         )
 
         self.layernorm = nn.LayerNorm(projection_dim, eps=1e-6)
 
         self.post_mlp = nn.Sequential(
-            nn.Linear(projection_dim, projection_dim),
-            nn.LeakyReLU(),
-            nn.Linear(projection_dim, num_feats),
+            TimeDistributed(nn.Linear(2 * projection_dim, projection_dim)),
+            TimeDistributed(nn.LeakyReLU()),
+            TimeDistributed(nn.Linear(projection_dim, num_feats)),
         )
 
     def forward(self, x, time_embed):
@@ -97,11 +120,12 @@ class DeepSetsAttention(nn.Module):
         time = torch.reshape(time, (-1, 1, time.shape[-1]))  # (B, 1, 64)
         time = torch.tile(time, (1, x.shape[1], 1))  # (B, N, 64)
 
-        encoded_patches = torch.concat([x, time], dim=-1)  # (B, N, 64 + 3)
-        encoded_patches = self.encoder_mlp(encoded_patches)  # (B, N, 64)
-        for transformer in self.transfomer_layers:
-            encoded_patches = transformer(encoded_patches)
+        tdd = torch.concat([x, time], dim=-1)  # (B, N, 64 + 3)
+        tdd = self.encoder_mlp(tdd)  # (B, N, 64)
+        encoded_patches = TimeDistributed(self.time_linear)(tdd)
+        for i in range(self.num_transformers):
+            encoded_patches = self.transfomer_layers[f"transformer_{i}"](encoded_patches)
 
         representation = self.layernorm(encoded_patches)
-        outputs = self.post_mlp(representation)  # (B, N, 3)
+        outputs = self.post_mlp(torch.concat([representation, tdd], dim=-1))  # (B, N, 3)
         return outputs
