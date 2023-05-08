@@ -13,13 +13,17 @@ class TimeDistributed(nn.Module):
             return self.module(x)
 
         # Squash samples and timesteps into a single axis
-        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
+        x_reshape = x.contiguous().view(
+            -1, x.size(-1)
+        )  # (samples * timesteps, input_size)
 
         y = self.module(x_reshape)
 
         # We have to reshape Y
         if self.batch_first:
-            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
+            y = y.contiguous().view(
+                x.size(0), -1, y.size(-1)
+            )  # (samples, timesteps, output_size)
         else:
             y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
 
@@ -97,13 +101,16 @@ class DeepSetsAttention(nn.Module):
 
         self.encoder_mlp = nn.Sequential(
             TimeDistributed(nn.Linear(projection_dim + num_feats, projection_dim)),
-            TimeDistributed(nn.LeakyReLU())
+            TimeDistributed(nn.LeakyReLU()),
         )
         self.time_linear = TimeDistributed(nn.Linear(projection_dim, projection_dim))
 
         self.transfomer_layers = nn.ModuleDict(
             {
-                f"transformer_{i}": TransformerLayer(projection_dim=projection_dim, num_heads=num_heads) for i in range(num_transformers)
+                f"transformer_{i}": TransformerLayer(
+                    projection_dim=projection_dim, num_heads=num_heads
+                )
+                for i in range(num_transformers)
             }
         )
 
@@ -124,8 +131,12 @@ class DeepSetsAttention(nn.Module):
         tdd = self.encoder_mlp(tdd)  # (B, N, 64)
         encoded_patches = TimeDistributed(self.time_linear)(tdd)
         for i in range(self.num_transformers):
-            encoded_patches = self.transfomer_layers[f"transformer_{i}"](encoded_patches)
+            encoded_patches = self.transfomer_layers[f"transformer_{i}"](
+                encoded_patches
+            )
 
         representation = self.layernorm(encoded_patches)
-        outputs = self.post_mlp(torch.concat([representation, tdd], dim=-1))  # (B, N, 3)
+        outputs = self.post_mlp(
+            torch.concat([representation, tdd], dim=-1)
+        )  # (B, N, 3)
         return outputs

@@ -16,7 +16,7 @@ def sample_events(config, sampler: DDIMSampler) -> torch.Tensor:
     end_t = time.time()
     print(f"Sampling {sampler.num_samples} events took {end_t - start_t} seconds.")
     raw_samples = reverse_preprocess(transformed_samples, config["NUM_DEPOSITS"])
-    #raw_samples[:, 0:1] = np.clip(raw_samples[:, 0:1], 0, 124.0)
+    # raw_samples[:, 0:1] = np.clip(raw_samples[:, 0:1], 0, 124.0)
     return raw_samples
 
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     print(f"Using {device}")
 
     diffusion = PointDiffusion(num_deposits=300, model_config=config).to(device=device)
-    state_dict = ckpt_mgr.load_best()['state_dict']
+    state_dict = ckpt_mgr.load_best()["state_dict"]
     diffusion.load_state_dict(state_dict)
 
     print("Sampling events...")
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         diffusion=diffusion,
         num_samples=5,
         data_shape=(config["NUM_DEPOSITS"], config["NUM_FEATS"]),
-        device=device
+        device=device,
     ).to(device)
     events = sample_events(config, sampler)
     with open(os.path.join(flags.save_path, flags.expname, "samples.npy"), "wb") as f:

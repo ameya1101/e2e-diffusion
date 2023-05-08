@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 
 def train_step(
-    flags, 
+    flags,
     model: PointDiffusion,
     device: str,
     dataloader: torch.utils.data.DataLoader,
@@ -24,7 +24,7 @@ def train_step(
     epoch_t0 = time.time()
     losses = []
     for batch_idx, x in enumerate(dataloader):
-        x = x[0].to(device) # weirdly dataloader returns list of batch objects
+        x = x[0].to(device)  # weirdly dataloader returns list of batch objects
         optimizer.zero_grad()
         loss = model(x)
         loss.backward()
@@ -51,9 +51,7 @@ if __name__ == "__main__":
         default="config.json",
         help="configuration file containing training hyperparameters",
     )
-    parser.add_argument(
-        "--data_path", help="path containing training files"
-    )
+    parser.add_argument("--data_path", help="path containing training files")
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
     )
@@ -103,7 +101,10 @@ if __name__ == "__main__":
     logger.info(repr(diffusion))
 
     optimizer = Adamax(diffusion.parameters(), lr=config["LR"])
-    scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=config["N_EPOCHS"]*int(len(dataloader.dataset)/config["BATCH"]))
+    scheduler = CosineAnnealingLR(
+        optimizer=optimizer,
+        T_max=config["N_EPOCHS"] * int(len(dataloader.dataset) / config["BATCH"]),
+    )
 
     ema_avg = (
         lambda averaged_model_params, model_params, num_averaged: 0.005

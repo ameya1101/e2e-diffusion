@@ -18,7 +18,9 @@ class PointDiffusion(nn.Module):
         self.max_particles = num_deposits
 
         self.timesteps = (
-            torch.arange(start=0, end=self.num_steps + 1, dtype=torch.float32, device=device)
+            torch.arange(
+                start=0, end=self.num_steps + 1, dtype=torch.float32, device=device
+            )
             / self.num_steps
             + 8e-3
         )
@@ -30,7 +32,11 @@ class PointDiffusion(nn.Module):
         alphas = 1 - self.betas
         self.alphas_cumprod = torch.cumprod(alphas, dim=0)
         alphas_cumprod_prev = torch.concat(
-            [torch.ones(1, dtype=torch.float32, device=device), self.alphas_cumprod[:-1]], dim=0
+            [
+                torch.ones(1, dtype=torch.float32, device=device),
+                self.alphas_cumprod[:-1],
+            ],
+            dim=0,
         )
         self.posterior_variance = (
             self.betas * (1 - alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
@@ -52,7 +58,9 @@ class PointDiffusion(nn.Module):
         )
 
     def forward(self, x):
-        random_t = torch.randint(low=0, high=self.num_steps, size=(x.shape[0], 1), device=x.device)
+        random_t = torch.randint(
+            low=0, high=self.num_steps, size=(x.shape[0], 1), device=x.device
+        )
         alpha = torch.gather(
             torch.sqrt(self.alphas_cumprod), index=random_t.squeeze(), dim=0
         )
@@ -72,7 +80,9 @@ class PointDiffusion(nn.Module):
         x_recon = alpha_reshape * x - sigma_reshape * score
 
         v = alpha_reshape * z - sigma_reshape * x
-        loss = 0.7 * nn.functional.mse_loss(score, v) + 0.3 * nn.functional.mse_loss(x, x_recon)
+        loss = 0.7 * nn.functional.mse_loss(score, v) + 0.3 * nn.functional.mse_loss(
+            x, x_recon
+        )
         return loss
 
 
@@ -83,7 +93,7 @@ class DDIMSampler(nn.Module):
         num_samples: int,
         model: nn.Module = None,
         data_shape=None,
-        device=None
+        device=None,
     ) -> None:
         super(DDIMSampler, self).__init__()
         self.diffusion = diffusion
@@ -114,7 +124,9 @@ class DDIMSampler(nn.Module):
                     dim=0,
                 ).to(self.device)
 
-                t_embedding = self.diffusion.time_embedder(batched_time_step.to(self.device))
+                t_embedding = self.diffusion.time_embedder(
+                    batched_time_step.to(self.device)
+                )
                 self.model.eval()
                 score = self.model(x, t_embedding)
                 alpha = torch.reshape(alpha, (-1, 1, 1))
