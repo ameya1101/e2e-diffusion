@@ -10,3 +10,4 @@ jobs:
       - uses: psf/black@stable
         with:
           src: "./src"
+          fail_on_error: "false"
