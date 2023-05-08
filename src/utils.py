@@ -121,7 +121,7 @@ def get_logger(name, log_dir=None):
 
 def get_existing_log_dir(root="./logs", local_path=None):
     log_dir = os.path.join(root, local_path)
-    if not os.exists(log_dir):
+    if not os.path.exists(log_dir):
         raise FileNotFoundError(f"{log_dir} was not found.")
     return log_dir
 
@@ -162,17 +162,20 @@ def _reverse_logit(z):
 
 def reverse_preprocess(deposits, num_deposits):
     data_dict = load_json_file(f"preprocessing_{num_deposits}.json")
+    num_deposits = deposits.shape[1]  # shape: (M, N, F)
+    num_feats = deposits.shape[2]
     deposits = deposits.reshape(-1, deposits.shape[-1])
     deposits = deposits * data_dict["std_hit"] + data_dict["mean_hit"]
     deposits = _reverse_logit(deposits)
     deposits = (
-        deposits * (np.array(data_dict["max_hit"] - data_dict["min_hit"]))
+        deposits * (np.array(data_dict["max_hit"]) - data_dict["min_hit"])
         + data_dict["min_hit"]
     )
+    deposits = deposits.reshape(-1, num_deposits, num_feats)
     return deposits
 
 
-def _preprocess(deposits: np.ndarray, save_json: bool = True):
+def _preprocess(deposits: np.ndarray, save_json: bool = False):
     num_deposits = deposits.shape[1]  # shape: (M, N, F)
     num_feats = deposits.shape[2]
     deposits = deposits.reshape(-1, deposits.shape[-1])  # shape: (M * N, F)
