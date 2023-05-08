@@ -20,3 +20,6 @@ class ModuleTests(unittest.TestCase):
 
         score = self.model(x, t_embedding)
         self.assertEqual(x.shape, score.shape)
+
+if __name__ == '__main__':
+    unittest.main()
