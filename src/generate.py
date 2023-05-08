@@ -12,11 +12,11 @@ warnings.filterwarnings("ignore")
 
 def sample_events(config, sampler: DDIMSampler) -> torch.Tensor:
     start_t = time.time()
-    transformed_samples = sampler.sample().numpy()
+    transformed_samples = sampler.sample().cpu().numpy()
     end_t = time.time()
     print(f"Sampling {sampler.num_samples} events took {end_t - start_t} seconds.")
     raw_samples = reverse_preprocess(transformed_samples, config["NUM_DEPOSITS"])
-    raw_samples = np.clip(raw_samples[:, 0:1], 0, 125.0)
+    #raw_samples[:, 0:1] = np.clip(raw_samples[:, 0:1], 0, 124.0)
     return raw_samples
 
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--save_path",
-        default="./generated-samples/",
+        default="./logs_gen/",
         help="path to save generataed samples",
     )
     parser.add_argument(
@@ -41,13 +41,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_root",
         type=str,
-        default="./logs_PCD",
+        default="./logs_gen",
         help="path to the root directory of all log files",
     )
     parser.add_argument(
         "--expname",
         type=str,
-        default="name of the experiment whose checkpoint is to be loaded",
+        help="name of the experiment whose checkpoint is to be loaded",
     )
     flags = parser.parse_args()
     config = load_json_file(flags.config)
@@ -61,15 +61,16 @@ if __name__ == "__main__":
     print(f"Using {device}")
 
     diffusion = PointDiffusion(num_deposits=300, model_config=config).to(device=device)
-    diffusion.load_state_dict(ckpt_mgr.load_best())
+    state_dict = ckpt_mgr.load_best()['state_dict']
+    diffusion.load_state_dict(state_dict)
 
     print("Sampling events...")
     sampler = DDIMSampler(
         diffusion=diffusion,
-        num_samples=1000,
-        data_shape=[config["NUM_DEPOSITS"], config["NUM_FEATS"]],
-        num_steps=config["MAX_STEPS"],
-    )
-    events = sample_events(sampler)
-    with open(os.path.join(flags.save_path, flags.expname, "-samples.npy"), "wb") as f:
+        num_samples=5,
+        data_shape=(config["NUM_DEPOSITS"], config["NUM_FEATS"]),
+        device=device
+    ).to(device)
+    events = sample_events(config, sampler)
+    with open(os.path.join(flags.save_path, flags.expname, "samples.npy"), "wb") as f:
         np.save(f, events)
